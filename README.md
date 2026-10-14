@@ -2,7 +2,7 @@
 
 Hangman is a small web game. Guess a hidden computer term one letter at a time. Every wrong guess adds a part to the drawing, and six wrong guesses end the game. Each word comes with a hint, and the word list is made of computer terms like PROCESSOR, ALGORITHM and TRANSISTOR. You can use the on-screen keyboard or your own, and it tracks your wins and losses.
 
-Live demo: 
+Live demo: https://rajshrestha-07.github.io/Hangman/
 
 Built with: HTML, CSS and JavaScript.
 
