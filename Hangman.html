@@ -1,0 +1,161 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hangman</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column on graph paper. A drawing of the gallows, the hidden word, a hint, then an on-screen keyboard. The words are all computer terms. */
+:root {
+  --paper: #eef1f4; --card: #ffffff; --ink: #14233a; --muted: #5c6b80; --line: #cdd5df;
+  --hot: #e8452c; --good: #1f7a4d; --bad: #b3261e;
+  --accent: #14233a; --accent-ink: #eef1f4;
+  --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1826; --card: #17233a; --ink: #e7ecf4; --muted: #93a2ba; --line: #2a3a56;
+    --hot: #ffb02e; --good: #6fd39b; --bad: #ff8a80; --accent: #e7ecf4; --accent-ink: #0f1826; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1826; --card: #17233a; --ink: #e7ecf4; --muted: #93a2ba; --line: #2a3a56;
+  --hot: #ffb02e; --good: #6fd39b; --bad: #ff8a80; --accent: #e7ecf4; --accent-ink: #0f1826; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 28px 56px;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px; background-position: -1px -1px;
+}
+main { max-width: 440px; margin-inline: auto; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1; letter-spacing: -0.02em; margin: 0; }
+p { margin: 0; color: var(--muted); }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.draw { display: flex; justify-content: center; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+svg { width: 100%; max-width: 220px; height: auto; display: block; }
+svg .part { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; fill: none; }
+svg .frame { stroke: var(--muted); stroke-width: 4; stroke-linecap: round; fill: none; }
+.word { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.ch { width: 1.7rem; height: 2.4rem; border-bottom: 3px solid var(--ink); text-align: center; font: 800 1.6rem/2.2rem var(--display); }
+.ch.lost { color: var(--bad); }
+.status { font: 800 1.2rem var(--display); min-height: 1.6em; text-align: center; }
+.hint { text-align: center; }
+.kb { display: grid; grid-template-columns: repeat(auto-fit, minmax(2.3rem, 1fr)); gap: 6px; }
+.k { padding: 9px 0; font-weight: 600; color: var(--ink); background: var(--card); border: 1px solid var(--ink); border-radius: 4px; }
+.k.hit { color: var(--good); border-color: var(--good); }
+.k.miss { color: var(--bad); border-color: var(--bad); opacity: 0.55; }
+.k:disabled { cursor: default; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.btn { font-weight: 600; padding: 9px 14px; color: var(--accent-ink); background: var(--accent); border: 2px solid var(--accent); border-radius: 4px; }
+.stat { display: flex; gap: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat b { color: var(--ink); font-weight: 600; }
+</style>
+
+<main>
+  <div class="panel">
+    <h1>Hangman</h1>
+    <p>Guess the computer term one letter at a time. Six wrong guesses and the drawing is complete.</p>
+    <div class="draw">
+      <svg viewBox="0 0 160 190" role="img" aria-label="Hangman drawing">
+        <path class="frame" d="M20 176 H110 M45 176 V16 H110 V36"/>
+        <circle class="part" id="p0" cx="110" cy="52" r="16"/>
+        <path class="part" id="p1" d="M110 68 V116"/>
+        <path class="part" id="p2" d="M110 80 L88 100"/>
+        <path class="part" id="p3" d="M110 80 L132 100"/>
+        <path class="part" id="p4" d="M110 116 L92 148"/>
+        <path class="part" id="p5" d="M110 116 L128 148"/>
+      </svg>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <div class="word" id="word" aria-label="Hidden word"></div>
+    <p class="hint" id="hint"></p>
+    <div class="kb" id="kb"></div>
+    <div class="row">
+      <button class="btn" id="new" type="button">New word</button>
+      <div class="stat"><span>Won <b id="won">0</b></span><span>Lost <b id="lost">0</b></span></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var WORDS = [
+    ["PROCESSOR", "The chip that runs instructions"],
+    ["KEYBOARD", "You type on it"],
+    ["ALGORITHM", "A step-by-step recipe for solving a problem"],
+    ["BINARY", "The base-2 number system"],
+    ["COMPILER", "Turns source code into machine code"],
+    ["INTERNET", "A global network of networks"],
+    ["PIXEL", "One dot on a screen"],
+    ["DATABASE", "Organized storage for lots of records"],
+    ["VARIABLE", "A named box that holds a value"],
+    ["FIREWALL", "Blocks unwanted network traffic"],
+    ["BROWSER", "Where you open websites"],
+    ["MEMORY", "Where a running program keeps its data"],
+    ["NETWORK", "Computers connected so they can talk"],
+    ["SOFTWARE", "Programs, as opposed to hardware"],
+    ["ROUTER", "Sends data packets toward their destination"],
+    ["SENSOR", "A part that measures the real world"],
+    ["CIRCUIT", "A closed path for electric current"],
+    ["TRANSISTOR", "A tiny switch, billions fit in a chip"],
+    ["PASSWORD", "A secret you should never share"],
+    ["FUNCTION", "A reusable block of code"]
+  ];
+  var word, hint, guessed, wrong, over, won = 0, lost = 0, MAX = 6, lastIdx = -1;
+  var kb = $("kb"), keys = {};
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(function (L) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "k"; b.textContent = L; b.setAttribute("aria-label", "Letter " + L);
+    b.addEventListener("click", function () { guess(L); });
+    kb.appendChild(b); keys[L] = b;
+  });
+
+  function newWord() {
+    var i; do { i = Math.floor(Math.random() * WORDS.length); } while (i === lastIdx);
+    lastIdx = i; word = WORDS[i][0]; hint = WORDS[i][1];
+    guessed = {}; wrong = 0; over = false;
+    $("hint").textContent = "Hint: " + hint + " (" + word.length + " letters)";
+    $("status").textContent = "Pick a letter.";
+    Object.keys(keys).forEach(function (L) { keys[L].className = "k"; keys[L].disabled = false; });
+    draw();
+  }
+  function draw(reveal) {
+    var html = "";
+    $("word").textContent = "";
+    word.split("").forEach(function (L) {
+      var d = document.createElement("div"); d.className = "ch";
+      if (guessed[L]) d.textContent = L;
+      else if (reveal) { d.textContent = L; d.className += " lost"; }
+      $("word").appendChild(d);
+    });
+    for (var i = 0; i < MAX; i++) $("p" + i).style.visibility = i < wrong ? "visible" : "hidden";
+  }
+  function guess(L) {
+    if (over || guessed[L]) return;
+    guessed[L] = true;
+    var hit = word.indexOf(L) >= 0;
+    keys[L].className = "k " + (hit ? "hit" : "miss"); keys[L].disabled = true;
+    if (!hit) wrong++;
+    var solved = word.split("").every(function (c) { return guessed[c]; });
+    if (solved) { over = true; won++; $("status").textContent = "You got it!"; }
+    else if (wrong >= MAX) { over = true; lost++; $("status").textContent = "Out of guesses. The word was " + word + "."; }
+    else { $("status").textContent = hit ? "Yes!" : (MAX - wrong) + " wrong guesses left."; }
+    $("won").textContent = won; $("lost").textContent = lost;
+    draw(over && !solved);
+    if (over) Object.keys(keys).forEach(function (k) { keys[k].disabled = true; });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var L = e.key.toUpperCase();
+    if (/^[A-Z]$/.test(L)) guess(L);
+  });
+  $("new").addEventListener("click", newWord);
+  newWord();
+})();
+</script>
+
+</body></html>
